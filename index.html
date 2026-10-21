@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1e3a">
+<meta name="robots" content="noindex">
+<title>Shorts Factory</title>
+<style>
+:root{
+  --bg:#f4f6fa;--card:#ffffff;--ink:#101828;--muted:#5b6475;--line:#e3e7ef;
+  --brand:#0b1e3a;--accent:#ffd400;--accent-ink:#1a1400;--ok:#12805c;--warn:#b54708;--bad:#c0262d;--chip:#eef2f8;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0a0f1a;--card:#131b2b;--ink:#eef2f8;--muted:#9aa4b5;--line:#243049;
+  --brand:#0b1e3a;--chip:#1c2740;
+}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.5 system-ui,-apple-system,"Segoe UI","Noto Sans Thai",Roboto,sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--brand);color:#fff;
+  padding:calc(10px + env(safe-area-inset-top)) 16px 10px;display:flex;align-items:center;gap:10px}
+header .dot{width:12px;height:12px;border-radius:50%;background:var(--accent)}
+header h1{font-size:17px;margin:0;font-weight:700;letter-spacing:.2px;flex:1}
+header .st{font-size:12px;opacity:.85}
+main{max-width:640px;margin:0 auto;padding:14px 16px calc(96px + env(safe-area-inset-bottom))}
+nav{position:fixed;bottom:0;left:0;right:0;z-index:5;background:var(--card);border-top:1px solid var(--line);
+  display:grid;grid-template-columns:repeat(4,1fr);padding-bottom:env(safe-area-inset-bottom)}
+nav button{background:none;border:0;color:var(--muted);padding:10px 4px 8px;font:inherit;font-size:12px;
+  display:flex;flex-direction:column;align-items:center;gap:2px}
+nav button .i{font-size:20px;line-height:1}
+nav button.on{color:var(--ink);font-weight:700}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin:0 0 14px}
+.card h2{font-size:17px;margin:0 0 10px}
+label{display:block;font-size:14px;color:var(--muted);margin:10px 0 6px}
+textarea,input{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);
+  border-radius:12px;padding:12px}
+textarea{min-height:84px;resize:vertical}
+.btn{display:block;width:100%;border:0;border-radius:14px;padding:15px;font:inherit;font-weight:700;
+  background:var(--accent);color:var(--accent-ink);margin-top:14px}
+.btn.sec{background:var(--chip);color:var(--ink);font-weight:600}
+.btn:disabled{opacity:.5}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.cnt button{flex:1;min-width:44px;border:1px solid var(--line);background:var(--bg);color:var(--ink);
+  border-radius:12px;padding:12px 0;font:inherit;font-weight:700}
+.cnt button.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+.muted{color:var(--muted);font-size:14px}
+.small{font-size:13px}
+.chip{display:inline-block;background:var(--chip);border-radius:999px;padding:3px 10px;font-size:12px;margin:2px 4px 2px 0}
+.bar{height:8px;background:var(--chip);border-radius:9px;overflow:hidden;margin:8px 0 4px}
+.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .6s}
+.run{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
+.run:first-child{border-top:0;margin-top:0;padding-top:0}
+.ok{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}
+.topic{border:1px solid var(--line);border-radius:14px;padding:12px;margin:10px 0;display:flex;gap:10px}
+.topic input{width:22px;height:22px;flex:none;margin-top:3px}
+.topic b{display:block}
+.score{font-weight:800;font-size:28px}
+.clip{border:1px solid var(--line);border-radius:14px;padding:12px;margin:10px 0}
+.clip h3{font-size:15px;margin:0 0 4px}
+.clip video{width:100%;border-radius:10px;margin-top:8px;background:#000;max-height:70vh}
+.clip .acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.clip .acts button,.clip .acts a{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:12px;
+  padding:11px 6px;font:inherit;font-size:14px;font-weight:600;text-align:center;text-decoration:none}
+.clip .acts .main{grid-column:1/-1;background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.done{opacity:.55}
+.toast{position:fixed;left:16px;right:16px;bottom:calc(84px + env(safe-area-inset-bottom));background:var(--ink);color:var(--bg);
+  border-radius:12px;padding:12px 14px;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:9;text-align:center}
+.toast.show{opacity:1}
+a{color:inherit}
+.hide{display:none}
+</style>
+</head>
+<body>
+<header><span class="dot"></span><h1>Shorts Factory</h1><span class="st" id="hdr"></span></header>
+<main>
+  <!-- CREATE -->
+  <section id="t-make">
+    <div class="card">
+      <h2>วันนี้อยากได้คลิปแนวไหน</h2>
+      <textarea id="niche" placeholder="เช่น สถานที่แปลกทั่วโลก, เรื่องอวกาศ, เครื่องจักรยักษ์ (ปล่อยว่าง = แนวหลักของช่อง)"></textarea>
+      <label>จำนวนคลิป</label>
+      <div class="row cnt" id="cnt"></div>
+      <div id="picked" class="hide">
+        <label>หัวข้อที่เลือกจากหน้าเทรนด์</label>
+        <textarea id="topics" placeholder="หนึ่งหัวข้อต่อบรรทัด"></textarea>
+        <div class="muted small">มีหัวข้อตรงนี้ ระบบจะทำตามหัวข้อนี้เลย (ข้ามการหาเทรนด์)</div>
+      </div>
+      <button class="btn" id="go">ส่งให้ระบบทำคลิป</button>
+      <div class="muted small" style="margin-top:8px">ใช้เวลาประมาณ 5–8 นาทีต่อคลิป ปิดหน้านี้ได้ เสร็จแล้วคลิปจะไปอยู่ที่แท็บ "คลิป"</div>
+    </div>
+    <div class="card"><h2>สถานะงาน</h2><div id="runs" class="muted">กำลังโหลด…</div></div>
+    <div class="card"><h2>ภาพรวมช่อง</h2><div id="report" class="muted small">กำลังโหลด…</div></div>
+  </section>
+
+  <!-- TRENDS -->
+  <section id="t-trends" class="hide">
+    <div class="card">
+      <h2>เรดาร์เทรนด์</h2>
+      <div class="muted small">ดึงข้อมูลจริงจาก YouTube Shorts ที่ดังเกินขนาดช่อง, Wikipedia และ Reddit แล้วให้ AI จัดอันดับหัวข้อ</div>
+      <label>niche ที่อยากวิเคราะห์</label>
+      <input id="tniche" placeholder="ปล่อยว่าง = แนวหลักของช่อง">
+      <button class="btn sec" id="tgo">หาเทรนด์ใหม่ (ประมาณ 3 นาที)</button>
+    </div>
+    <div id="trend"></div>
+  </section>
+
+  <!-- CLIPS -->
+  <section id="t-clips" class="hide"><div id="clips" class="muted">กำลังโหลด…</div></section>
+
+  <!-- SETTINGS -->
+  <section id="t-set" class="hide">
+    <div class="card">
+      <h2>เชื่อมต่อระบบ</h2>
+      <label>ชื่อผู้ใช้ GitHub</label><input id="owner" autocapitalize="off" autocomplete="off">
+      <label>ชื่อ repo ของระบบ</label><input id="repo" value="-shorts-factory-" autocapitalize="off">
+      <label>Token (เก็บไว้ในมือถือเครื่องนี้เท่านั้น)</label><input id="token" type="password" autocomplete="off">
+      <button class="btn" id="save">บันทึกและทดสอบ</button>
+      <div id="setmsg" class="muted small" style="margin-top:8px"></div>
+    </div>
+    <div class="card muted small">วิธีสร้าง token อยู่ในคู่มือ <b>SETUP_MOBILE_TH</b> ใน repo ของคุณ</div>
+  </section>
+</main>
+
+<nav>
+  <button data-t="make" class="on"><span class="i">＋</span>สร้าง</button>
+  <button data-t="trends"><span class="i">📈</span>เทรนด์</button>
+  <button data-t="clips"><span class="i">🎬</span>คลิป</button>
+  <button data-t="set"><span class="i">⚙︎</span>ตั้งค่า</button>
+</nav>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+"use strict";
+const $ = id => document.getElementById(id);
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("sf_" + k); return v === null ? d : v; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("sf_" + k, v); } catch {} }
+};
+let cfg = { owner: store.get("owner", ""), repo: store.get("repo", "-shorts-factory-"), token: store.get("token", "") };
+let count = parseInt(store.get("count", "3"), 10) || 3;
+let pollTimer = null;
+
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("show"); setTimeout(() => t.classList.remove("show"), 2600); }
+function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function ready() { return cfg.owner && cfg.repo && cfg.token; }
+
+async function gh(path, opts = {}) {
+  const res = await fetch("https://api.github.com/repos/" + cfg.owner + "/" + cfg.repo + path, {
+    ...opts,
+    headers: { "Accept": "application/vnd.github+json", "Authorization": "Bearer " + cfg.token,
+               "X-GitHub-Api-Version": "2022-11-28", ...(opts.headers || {}) }
+  });
+  if (!res.ok && res.status !== 204) {
+    let m = ""; try { m = (await res.json()).message; } catch {}
+    throw new Error(res.status + " " + m);
+  }
+  return res.status === 204 ? null : res;
+}
+const ghJson = async (p, o) => (await gh(p, o)).json();
+
+// ---------- tabs
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => show(b.dataset.t));
+function show(t) {
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.t === t));
+  ["make", "trends", "clips", "set"].forEach(x => $("t-" + x).classList.toggle("hide", x !== t));
+  store.set("tab", t);
+  if (!ready() && t !== "set") { show("set"); toast("ตั้งค่าการเชื่อมต่อก่อน"); return; }
+  if (t === "make") { loadRuns(); loadReport(); }
+  if (t === "trends") loadTrends();
+  if (t === "clips") loadClips();
+}
+
+// ---------- create
+function drawCount() {
+  $("cnt").innerHTML = [1, 2, 3, 4, 5, 6].map(n => `<button class="${n === count ? "on" : ""}" data-n="${n}">${n}</button>`).join("");
+  $("cnt").querySelectorAll("button").forEach(b => b.onclick = () => { count = +b.dataset.n; store.set("count", count); drawCount(); });
+}
+$("niche").value = store.get("niche", "");
+$("niche").oninput = e => store.set("niche", e.target.value);
+$("topics").oninput = e => { store.set("topics", e.target.value); $("picked").classList.toggle("hide", !e.target.value.trim()); };
+$("topics").value = store.get("topics", "");
+$("picked").classList.toggle("hide", !$("topics").value.trim());
+
+$("go").onclick = async () => {
+  const btn = $("go"); btn.disabled = true;
+  try {
+    await gh("/actions/workflows/make.yml/dispatches", { method: "POST",
+      body: JSON.stringify({ ref: "main", inputs: { niche: $("niche").value.trim(), count: String(count), topics: $("topics").value.trim() } }) });
+    toast("ส่งงานแล้ว ✅ ระบบเริ่มทำงานภายใน 1 นาที");
+    $("topics").value = ""; store.set("topics", ""); $("picked").classList.add("hide");
+    setTimeout(loadRuns, 4000);
+  } catch (e) { toast("ส่งไม่สำเร็จ: " + e.message); }
+  btn.disabled = false;
+};
+
+function ago(iso) {
+  const m = Math.round((Date.now() - new Date(iso)) / 60000);
+  return m < 1 ? "เมื่อสักครู่" : m < 60 ? m + " นาทีที่แล้ว" : Math.round(m / 60) + " ชม.ที่แล้ว";
+}
+async function loadRuns() {
+  if (!ready()) return;
+  try {
+    const data = await ghJson("/actions/runs?per_page=6");
+    const runs = data.workflow_runs || [];
+    if (!runs.length) { $("runs").innerHTML = "ยังไม่มีงาน"; return; }
+    let busy = false;
+    const html = await Promise.all(runs.map(async r => {
+      const live = r.status !== "completed";
+      busy = busy || live;
+      let pct = live ? 5 : 100, step = "";
+      if (live) {
+        try {
+          const j = await ghJson(`/actions/runs/${r.id}/jobs`);
+          const steps = (j.jobs[0] || {}).steps || [];
+          const done = steps.filter(s => s.status === "completed").length;
+          pct = steps.length ? Math.max(5, Math.round(done / steps.length * 100)) : 5;
+          const cur = steps.find(s => s.status === "in_progress");
+          step = cur ? cur.name : (r.status === "queued" ? "รอคิว" : "");
+        } catch {}
+      }
+      const name = r.name === "Find Trends" ? "หาเทรนด์" : "ทำคลิป";
+      const state = live ? `<span class="warn">กำลังทำ…</span>` :
+        r.conclusion === "success" ? `<span class="ok">เสร็จแล้ว</span>` : `<span class="bad">ไม่สำเร็จ</span>`;
+      return `<div class="run"><b>${name}</b> · ${state} <span class="muted small">· ${ago(r.created_at)}</span>
+        <div class="bar"><i style="width:${pct}%"></i></div>
+        <div class="muted small">${esc(step)} ${live ? "" : `<a href="${r.html_url}" target="_blank" rel="noopener">ดูรายละเอียด</a>`}</div></div>`;
+    }));
+    $("runs").innerHTML = html.join("");
+    $("hdr").textContent = busy ? "กำลังทำงาน…" : "";
+    clearTimeout(pollTimer);
+    if (busy) pollTimer = setTimeout(loadRuns, 15000);
+  } catch (e) { $("runs").innerHTML = `<span class="bad">โหลดไม่ได้: ${esc(e.message)}</span> — ตรวจหน้า ตั้งค่า`; }
+}
+
+// ---------- weekly overview
+const FMT = { shock_fact: "เรื่องจริงชวนช็อก", myth_vs_fact: "ความเชื่อผิด vs ความจริง", three_things: "3 เรื่องที่ไม่รู้",
+              versus: "เทียบ A vs B", map_explains: "แผนที่อธิบาย" };
+async function loadReport() {
+  const box = $("report");
+  let r = null, expiry = null;
+  try {
+    const res = await gh("/contents/memory/report.json");
+    expiry = res.headers.get("github-authentication-token-expiration");
+    r = JSON.parse(b64utf8((await res.json()).content));
+  } catch {}
+  let minutes = null;
+  try {
+    const first = new Date(); first.setDate(1);
+    const runs = (await ghJson(`/actions/runs?per_page=100&created=>=${first.toISOString().slice(0, 10)}`)).workflow_runs || [];
+    minutes = Math.round(runs.reduce((a, x) => a + Math.max(0, (new Date(x.updated_at) - new Date(x.run_started_at || x.created_at)) / 60000), 0));
+  } catch {}
+  let h = "";
+  if (r) {
+    h += `<div>คลิปทั้งหมด <b>${r.clips_total}</b> · 7 วันล่าสุด <b>${r.clips_7d}</b></div>`;
+    if (r.published_tracked) h += `<div>ยอดวิวรวม (${r.published_tracked} คลิปที่ลงแล้ว) <b>${(r.views_total || 0).toLocaleString()}</b></div>`;
+    if (r.best_format) h += `<div>รูปแบบที่ได้ผลที่สุด <b>${esc(FMT[r.best_format] || r.best_format)}</b></div>`;
+    if (r.top_video) h += `<div>คลิปท็อป: ${esc(r.top_video.title)} (${(r.top_video.views || 0).toLocaleString()} วิว)</div>`;
+  } else h += `<div>ยังไม่มีข้อมูล (จะขึ้นหลังทำคลิปรอบแรก)</div>`;
+  if (minutes != null) h += `<div>โควตา GitHub เดือนนี้ ~<b>${minutes}</b> / 2,000 นาที${minutes > 1600 ? ' <span class="bad">ใกล้เต็ม ลดจำนวนคลิปต่อวัน</span>' : ""}</div>`;
+  if (expiry) {
+    const days = Math.round((new Date(expiry) - Date.now()) / 86400000);
+    h += `<div>token หมดอายุในอีก <b>${days}</b> วัน${days < 14 ? ' <span class="bad">ต่ออายุ token ใหม่</span>' : ""}</div>`;
+  }
+  box.innerHTML = h;
+}
+
+// ---------- trends
+$("tniche").value = store.get("tniche", "");
+$("tniche").oninput = e => store.set("tniche", e.target.value);
+$("tgo").onclick = async () => {
+  try {
+    await gh("/actions/workflows/trends.yml/dispatches", { method: "POST",
+      body: JSON.stringify({ ref: "main", inputs: { niche: $("tniche").value.trim() } }) });
+    toast("กำลังหาเทรนด์ ประมาณ 3 นาที แล้วกดแท็บนี้อีกครั้ง");
+  } catch (e) { toast("ไม่สำเร็จ: " + e.message); }
+};
+function b64utf8(b) { const bin = atob(b.replace(/\n/g, "")); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new TextDecoder().decode(u); }
+async function loadTrends() {
+  const box = $("trend");
+  box.innerHTML = `<div class="card muted">กำลังโหลด…</div>`;
+  let d;
+  try { d = JSON.parse(b64utf8((await ghJson("/contents/trends/latest.json")).content)); }
+  catch { box.innerHTML = `<div class="card muted">ยังไม่มีรายงาน กด "หาเทรนด์ใหม่" ก่อน</div>`; return; }
+  const o = d.opportunity || {};
+  const sc = o.score == null ? "–" : o.score;
+  const col = o.score == null ? "" : o.score >= 60 ? "ok" : o.score >= 35 ? "warn" : "bad";
+  let h = `<div class="card"><div class="muted small">${esc(d.niche_en)} · ${esc((d.date || "").replace("T", " "))}</div>
+    <div class="row" style="align-items:baseline;gap:10px;margin-top:6px"><span class="score ${col}">${sc}</span>
+    <span class="muted small">คะแนนโอกาสของ niche (0–100)<br>ช่องเล็กที่ทำได้ 100k+ วิว: ${o.small_channel_hits ?? "–"} จาก ${o.videos_checked ?? "–"} คลิป</span></div></div>
+    <div class="card"><h2>หัวข้อแนะนำ</h2><div class="muted small">ติ๊กหัวข้อที่อยากทำ แล้วกด "ใช้หัวข้อที่เลือก"</div>`;
+  (d.topics || []).forEach((t, i) => {
+    h += `<label class="topic"><input type="checkbox" data-i="${i}"><span><b>${esc(t.topic)}</b>
+      <span class="small">${esc(t.angle)}</span><br><span class="chip">คะแนน ${esc(t.score)}</span>
+      <span class="muted small">${esc(t.why_now)}</span></span></label>`;
+  });
+  h += `<button class="btn" id="usepick">ใช้หัวข้อที่เลือก</button></div>`;
+  if ((d.top_outliers || []).length) {
+    h += `<div class="card"><h2>คลิปที่ดังเกินขนาดช่อง</h2>` + d.top_outliers.slice(0, 10).map(v =>
+      `<div class="run"><a href="${esc(v.url)}" target="_blank" rel="noopener">${esc(v.title)}</a>
+       <div class="muted small">${(v.views || 0).toLocaleString()} วิว · ช่อง ${(v.subs || 0).toLocaleString()} คน · x${esc(v.outlier)}</div></div>`).join("") + `</div>`;
+  }
+  box.innerHTML = h;
+  $("usepick").onclick = () => {
+    const sel = [...box.querySelectorAll("input[type=checkbox]:checked")].map(c => d.topics[+c.dataset.i].topic);
+    if (!sel.length) { toast("ยังไม่ได้เลือกหัวข้อ"); return; }
+    $("topics").value = sel.join("\n"); store.set("topics", $("topics").value);
+    count = Math.min(6, sel.length); store.set("count", count); drawCount();
+    $("picked").classList.remove("hide"); show("make"); toast("ใส่หัวข้อแล้ว กดส่งได้เลย");
+  };
+}
+
+// ---------- clips
+function parseNotes(md) {
+  const out = {}; const parts = (md || "").split(/\n## /).slice(1);
+  parts.forEach(p => {
+    const lines = p.split("\n"); const title = lines[0].trim();
+    const file = (p.match(/`([^`]+\.mp4)`/) || [])[1];
+    const desc = lines.slice(1).filter(l => l.trim() && !l.includes("`")).join("\n").trim();
+    if (file) out[file] = { title, desc };
+  });
+  return out;
+}
+const doneSet = () => new Set(JSON.parse(store.get("uploaded", "[]")));
+async function loadClips() {
+  const box = $("clips");
+  try {
+    const rels = await ghJson("/releases?per_page=8");
+    if (!rels.length) { box.innerHTML = `<div class="card">ยังไม่มีคลิป</div>`; return; }
+    const done = doneSet();
+    box.innerHTML = rels.map(r => {
+      const info = parseNotes(r.body);
+      const vids = r.assets.filter(a => a.name.endsWith(".mp4"));
+      return `<div class="card"><h2>${esc(r.name)}</h2>` + vids.map(a => {
+        const m = info[a.name] || { title: a.name, desc: "" };
+        const cov = r.assets.find(x => x.name === a.name.replace(/\.mp4$/, "_cover.jpg"));
+        return `<div class="clip ${done.has(a.name) ? "done" : ""}" data-a="${a.id}" data-n="${esc(a.name)}" data-u="${esc(a.browser_download_url)}">
+          <h3>${esc(m.title)}</h3><div class="muted small">${(a.size / 1048576).toFixed(1)} MB${done.has(a.name) ? " · อัปโหลดแล้ว" : ""}</div>
+          <div class="v"></div>
+          <div class="acts">
+            <button class="main" data-act="dl">ดาวน์โหลด / ดูคลิป</button>
+            <button data-act="ct" data-t="${esc(m.title)}">ก๊อปชื่อคลิป</button>
+            <button data-act="cd" data-t="${esc(m.desc)}">ก๊อปคำอธิบาย</button>
+            ${cov ? `<button data-act="cov" data-c="${cov.id}" data-cn="${esc(cov.name)}" data-cu="${esc(cov.browser_download_url)}">ภาพปก</button>` : ""}
+            <button data-act="up">${done.has(a.name) ? "ยกเลิกอัปโหลดแล้ว" : "ติ๊ก อัปโหลดแล้ว"}</button>
+          </div></div>`;
+      }).join("") + `</div>`;
+    }).join("");
+    box.querySelectorAll(".clip button").forEach(b => b.onclick = () => clipAction(b));
+  } catch (e) { box.innerHTML = `<div class="card bad">โหลดไม่ได้: ${esc(e.message)}</div>`; }
+}
+async function copy(t) {
+  try { await navigator.clipboard.writeText(t); toast("ก๊อปแล้ว ✅"); }
+  catch { prompt("กดค้างเพื่อก๊อป", t); }
+}
+async function clipAction(b) {
+  const c = b.closest(".clip"), act = b.dataset.act;
+  if (act === "ct" || act === "cd") return copy(b.dataset.t);
+  if (act === "up") {
+    const s = doneSet(); s.has(c.dataset.n) ? s.delete(c.dataset.n) : s.add(c.dataset.n);
+    store.set("uploaded", JSON.stringify([...s])); return loadClips();
+  }
+  if (act === "cov") {
+    try {
+      const res = await gh(`/releases/assets/${b.dataset.c}`, { headers: { Accept: "application/octet-stream" } });
+      const url = URL.createObjectURL(new Blob([await res.blob()], { type: "image/jpeg" }));
+      const a = document.createElement("a"); a.href = url; a.download = b.dataset.cn; a.textContent = "บันทึกภาพปก";
+      c.querySelector(".v").insertAdjacentHTML("beforeend", `<img src="${url}" style="width:100%;border-radius:10px;margin-top:8px">`);
+      b.replaceWith(a);
+    } catch { window.open(b.dataset.cu, "_blank", "noopener"); }
+    return;
+  }
+  // download: fetch through the API (works for private repos), fall back to GitHub's own download link
+  b.disabled = true; b.textContent = "กำลังโหลดคลิป…";
+  try {
+    const res = await gh(`/releases/assets/${c.dataset.a}`, { headers: { Accept: "application/octet-stream" } });
+    const blob = await res.blob();
+    const url = URL.createObjectURL(new Blob([blob], { type: "video/mp4" }));
+    c.querySelector(".v").innerHTML = `<video controls playsinline src="${url}"></video>`;
+    const a = document.createElement("a"); a.href = url; a.download = c.dataset.n; a.className = "main";
+    a.textContent = "บันทึกลงเครื่อง"; b.replaceWith(a);
+    toast("โหลดเสร็จ กด \"บันทึกลงเครื่อง\" หรือกดค้างที่วิดีโอ");
+  } catch (e) {
+    b.disabled = false; b.textContent = "ดาวน์โหลด / ดูคลิป";
+    toast("เปิดผ่านหน้า GitHub แทน (ต้องล็อกอิน GitHub ในเบราว์เซอร์นี้)");
+    window.open(c.dataset.u, "_blank", "noopener");
+  }
+}
+
+// ---------- settings
+$("owner").value = cfg.owner; $("repo").value = cfg.repo; $("token").value = cfg.token;
+$("save").onclick = async () => {
+  cfg = { owner: $("owner").value.trim(), repo: $("repo").value.trim() || "-shorts-factory-", token: $("token").value.trim() };
+  store.set("owner", cfg.owner); store.set("repo", cfg.repo); store.set("token", cfg.token);
+  $("setmsg").textContent = "กำลังทดสอบ…";
+  try {
+    const r = await (await gh("")).json();
+    await ghJson("/actions/workflows");
+    $("setmsg").innerHTML = `<span class="ok">เชื่อมต่อสำเร็จ ✅ ${esc(r.full_name)}</span>`;
+    setTimeout(() => show("make"), 900);
+  } catch (e) { $("setmsg").innerHTML = `<span class="bad">เชื่อมต่อไม่ได้: ${esc(e.message)}</span>`; }
+};
+
+drawCount();
+show(ready() ? store.get("tab", "make") : "set");
+document.addEventListener("visibilitychange", () => { if (!document.hidden && store.get("tab") === "make") loadRuns(); });
+})();
+</script>
+</body>
+</html>
