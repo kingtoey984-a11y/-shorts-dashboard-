@@ -25,7 +25,7 @@ header h1{font-size:17px;margin:0;font-weight:700;letter-spacing:.2px;flex:1}
 header .st{font-size:12px;opacity:.85}
 main{max-width:640px;margin:0 auto;padding:14px 16px calc(96px + env(safe-area-inset-bottom))}
 nav{position:fixed;bottom:0;left:0;right:0;z-index:5;background:var(--card);border-top:1px solid var(--line);
-  display:grid;grid-template-columns:repeat(4,1fr);padding-bottom:env(safe-area-inset-bottom)}
+  display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:env(safe-area-inset-bottom)}
 nav button{background:none;border:0;color:var(--muted);padding:10px 4px 8px;font:inherit;font-size:12px;
   display:flex;flex-direction:column;align-items:center;gap:2px}
 nav button .i{font-size:20px;line-height:1}
@@ -69,6 +69,20 @@ textarea{min-height:84px;resize:vertical}
 .toast.show{opacity:1}
 a{color:inherit}
 .hide{display:none}
+.badge{display:inline-block;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:700;margin:4px 0}
+.badge.ready{background:#d1fadf;color:#05603a}.badge.review{background:#fef0c7;color:#93370d}
+.badge.gone{background:var(--chip);color:var(--muted)}
+.kit{margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
+.kit .line{display:flex;gap:8px;align-items:flex-start;margin:6px 0}
+.kit .line span{flex:1;font-size:14px}
+.kit .line button{flex:none;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;
+  padding:6px 10px;font:inherit;font-size:13px;font-weight:600}
+.reasons{font-size:13px;color:var(--warn);margin:4px 0 0;padding-left:18px}
+.stat{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+.stat div{background:var(--chip);border-radius:10px;padding:8px;text-align:center;font-size:12px;color:var(--muted)}
+.stat b{display:block;font-size:17px;color:var(--ink)}
+audio{width:100%;margin-top:6px}
+details summary{cursor:pointer;font-weight:600;font-size:14px;margin-top:8px}
 </style>
 </head>
 <body>
@@ -108,6 +122,9 @@ a{color:inherit}
   <!-- CLIPS -->
   <section id="t-clips" class="hide"><div id="clips" class="muted">กำลังโหลด…</div></section>
 
+  <!-- RESULTS -->
+  <section id="t-res" class="hide"><div id="res" class="muted">กำลังโหลด…</div></section>
+
   <!-- SETTINGS -->
   <section id="t-set" class="hide">
     <div class="card">
@@ -118,7 +135,13 @@ a{color:inherit}
       <button class="btn" id="save">บันทึกและทดสอบ</button>
       <div id="setmsg" class="muted small" style="margin-top:8px"></div>
     </div>
-    <div class="card muted small">วิธีสร้าง token อยู่ในคู่มือ <b>SETUP_MOBILE_TH</b> ใน repo ของคุณ</div>
+    <div class="card">
+      <h2>เสียงพากย์</h2>
+      <div class="muted small" id="curvoice">เสียงที่ใช้อยู่: …</div>
+      <button class="btn sec" id="vtest">ทำเสียงตัวอย่างทุกแบบ (ประมาณ 5 นาที)</button>
+      <div id="voices" class="small" style="margin-top:8px"></div>
+    </div>
+    <div class="card muted small">วิธีสร้าง token อยู่ในคู่มือ <b>SETUP_MOBILE_TH</b> · เปิดสถิติเชิงลึก: <b>SETUP_ANALYTICS_TH</b></div>
   </section>
 </main>
 
@@ -126,6 +149,7 @@ a{color:inherit}
   <button data-t="make" class="on"><span class="i">＋</span>สร้าง</button>
   <button data-t="trends"><span class="i">📈</span>เทรนด์</button>
   <button data-t="clips"><span class="i">🎬</span>คลิป</button>
+  <button data-t="res"><span class="i">📊</span>ผล</button>
   <button data-t="set"><span class="i">⚙︎</span>ตั้งค่า</button>
 </nav>
 <div class="toast" id="toast"></div>
@@ -164,12 +188,14 @@ const ghJson = async (p, o) => (await gh(p, o)).json();
 document.querySelectorAll("nav button").forEach(b => b.onclick = () => show(b.dataset.t));
 function show(t) {
   document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.t === t));
-  ["make", "trends", "clips", "set"].forEach(x => $("t-" + x).classList.toggle("hide", x !== t));
+  ["make", "trends", "clips", "res", "set"].forEach(x => $("t-" + x).classList.toggle("hide", x !== t));
   store.set("tab", t);
   if (!ready() && t !== "set") { show("set"); toast("ตั้งค่าการเชื่อมต่อก่อน"); return; }
   if (t === "make") { loadRuns(); loadReport(); }
   if (t === "trends") loadTrends();
   if (t === "clips") loadClips();
+  if (t === "res") loadResults();
+  if (t === "set") loadVoices();
 }
 
 // ---------- create
@@ -220,7 +246,8 @@ async function loadRuns() {
           step = cur ? cur.name : (r.status === "queued" ? "รอคิว" : "");
         } catch {}
       }
-      const name = r.name === "Find Trends" ? "หาเทรนด์" : "ทำคลิป";
+      const name = { "Find Trends": "หาเทรนด์", "Owner command": "คำสั่งจากมือถือ", "Results and Analyst": "ดึงผล/วิเคราะห์",
+                     "Voice test": "ทดสอบเสียง" }[r.name] || "ทำคลิป";
       const state = live ? `<span class="warn">กำลังทำ…</span>` :
         r.conclusion === "success" ? `<span class="ok">เสร็จแล้ว</span>` : `<span class="bad">ไม่สำเร็จ</span>`;
       return `<div class="run"><b>${name}</b> · ${state} <span class="muted small">· ${ago(r.created_at)}</span>
@@ -312,54 +339,112 @@ async function loadTrends() {
 }
 
 // ---------- clips
-function parseNotes(md) {
-  const out = {}; const parts = (md || "").split(/\n## /).slice(1);
-  parts.forEach(p => {
-    const lines = p.split("\n"); const title = lines[0].trim();
-    const file = (p.match(/`([^`]+\.mp4)`/) || [])[1];
-    const desc = lines.slice(1).filter(l => l.trim() && !l.includes("`")).join("\n").trim();
-    if (file) out[file] = { title, desc };
-  });
-  return out;
+async function owner(action, target, value) {
+  await gh("/actions/workflows/owner.yml/dispatches", { method: "POST",
+    body: JSON.stringify({ ref: "main", inputs: { action, target: target || "", value: value || "" } }) });
 }
-const doneSet = () => new Set(JSON.parse(store.get("uploaded", "[]")));
+async function readJsonFile(path) {
+  try { return JSON.parse(b64utf8((await ghJson("/contents/" + path)).content)); } catch { return null; }
+}
+async function assetJson(id) {
+  const res = await gh(`/releases/assets/${id}`, { headers: { Accept: "application/octet-stream" } });
+  return JSON.parse(await res.text());
+}
+const localDec = () => JSON.parse(store.get("decisions", "{}"));
+function setLocalDec(ep, v) { const d = localDec(); d[ep] = { ...(d[ep] || {}), ...v }; store.set("decisions", JSON.stringify(d)); }
+let summary = null;
 async function loadClips() {
   const box = $("clips");
   try {
-    const rels = await ghJson("/releases?per_page=8");
-    if (!rels.length) { box.innerHTML = `<div class="card">ยังไม่มีคลิป</div>`; return; }
-    const done = doneSet();
-    box.innerHTML = rels.map(r => {
-      const info = parseNotes(r.body);
+    const [rels, summ] = await Promise.all([ghJson("/releases?per_page=10"), readJsonFile("memory/analytics_summary.json")]);
+    summary = summ;
+    const byEp = {}; ((summ || {}).clips || []).forEach(c => byEp[c.episode] = c);
+    const clipRels = rels.filter(r => r.tag_name !== "voice-test");
+    if (!clipRels.length) { box.innerHTML = `<div class="card">ยังไม่มีคลิป</div>`; return; }
+    box.innerHTML = clipRels.map(r => {
       const vids = r.assets.filter(a => a.name.endsWith(".mp4"));
       return `<div class="card"><h2>${esc(r.name)}</h2>` + vids.map(a => {
-        const m = info[a.name] || { title: a.name, desc: "" };
-        const cov = r.assets.find(x => x.name === a.name.replace(/\.mp4$/, "_cover.jpg"));
-        return `<div class="clip ${done.has(a.name) ? "done" : ""}" data-a="${a.id}" data-n="${esc(a.name)}" data-u="${esc(a.browser_download_url)}">
-          <h3>${esc(m.title)}</h3><div class="muted small">${(a.size / 1048576).toFixed(1)} MB${done.has(a.name) ? " · อัปโหลดแล้ว" : ""}</div>
+        const ep = a.name.replace(/\.mp4$/, "");
+        const kitA = r.assets.find(x => x.name === ep + ".json");
+        const cov = r.assets.find(x => x.name === ep + "_cover.jpg");
+        return `<div class="clip" data-ep="${esc(ep)}" data-a="${a.id}" data-n="${esc(a.name)}" data-u="${esc(a.browser_download_url)}" data-k="${kitA ? kitA.id : ""}">
+          <h3 class="ttl">${esc(ep)}</h3><div class="st muted small">${(a.size / 1048576).toFixed(1)} MB</div>
           <div class="v"></div>
           <div class="acts">
-            <button class="main" data-act="dl">ดาวน์โหลด / ดูคลิป</button>
-            <button data-act="ct" data-t="${esc(m.title)}">ก๊อปชื่อคลิป</button>
-            <button data-act="cd" data-t="${esc(m.desc)}">ก๊อปคำอธิบาย</button>
+            <button class="main" data-act="dl">▶ ดูคลิป / ดาวน์โหลด</button>
             ${cov ? `<button data-act="cov" data-c="${cov.id}" data-cn="${esc(cov.name)}" data-cu="${esc(cov.browser_download_url)}">ภาพปก</button>` : ""}
-            <button data-act="up">${done.has(a.name) ? "ยกเลิกอัปโหลดแล้ว" : "ติ๊ก อัปโหลดแล้ว"}</button>
-          </div></div>`;
+            <button data-act="posted">📺 ลงแล้ว</button>
+            <button data-act="use">✅ ใช้</button>
+            <button data-act="discard">❌ ทิ้ง</button>
+            <button data-act="remake">🔁 ทำใหม่</button>
+          </div><div class="kit"></div></div>`;
       }).join("") + `</div>`;
     }).join("");
     box.querySelectorAll(".clip button").forEach(b => b.onclick = () => clipAction(b));
+    box.querySelectorAll(".clip").forEach(c => fillKit(c, byEp[c.dataset.ep]));
   } catch (e) { box.innerHTML = `<div class="card bad">โหลดไม่ได้: ${esc(e.message)}</div>`; }
+}
+const kits = {};
+async function fillKit(c, an) {
+  const ep = c.dataset.ep; let k = null;
+  if (c.dataset.k) { try { k = kits[ep] || await assetJson(c.dataset.k); kits[ep] = k; } catch {} }
+  const dec = { ...(an || {}), ...(localDec()[ep] || {}) };
+  if (k) {
+    c.querySelector(".ttl").textContent = (k.titles || [])[0] || ep;
+    const badge = k.status === "ready" ? `<span class="badge ready">พร้อมลง</span>` : `<span class="badge review">ต้องดูก่อน</span>`;
+    let st = `${badge} <span class="chip">${esc(k.series || "")}</span> <span class="chip">${k.duration ? k.duration.toFixed(0) + " วิ" : ""}</span>`;
+    if (dec.decision === "discard") st += ` <span class="badge gone">ทิ้งแล้ว</span>`;
+    if (dec.video_confirmed || dec.confirmed) st += ` <span class="badge ready">ลงแล้ว</span>`;
+    c.querySelector(".st").innerHTML = st + ((k.reasons_th || []).length ? `<ul class="reasons">${k.reasons_th.slice(0, 5).map(r => `<li>${esc(r)}</li>`).join("")}</ul>` : "");
+    const line = (label, text) => `<div class="line"><span><b>${label}</b><br>${esc(text).replace(/\n/g, "<br>")}</span><button data-copy="${esc(text)}">ก๊อป</button></div>`;
+    let h = (k.titles || []).map((t, i) => line(`ชื่อคลิป ${i + 1}`, t)).join("");
+    h += `<details><summary>คำอธิบาย + แหล่งอ้างอิง</summary>${line("คำอธิบาย", k.description || "")}</details>`;
+    h += line("คอมเมนต์ปักหมุด", k.pinned_comment || "");
+    h += line("แท็ก", (k.tags || []).join(", "));
+    h += `<details><summary>TikTok / Reels / Facebook</summary>${line("แคปชัน", (k.social || {}).tiktok || "")}</details>`;
+    h += `<div class="muted small">เพลย์ลิสต์: <b>${esc(k.playlist || "")}</b> · เวลาลงที่ดี (เวลาไทย): ${(k.post_times || []).map(p => esc(p.th)).join(", ")}</div>`;
+    if (an && an.video_id && !an.video_confirmed && !dec.confirmed) {
+      h += `<div class="line"><span class="warn">ระบบเจอคลิปบน YouTube: <b>${esc(an.match_title || an.video_id)}</b> ใช่คลิปนี้ไหม</span>
+            <button data-confirm="1">ใช่</button></div>`;
+    }
+    c.querySelector(".kit").innerHTML = h;
+    c.querySelectorAll("[data-copy]").forEach(b => b.onclick = () => copy(b.dataset.copy));
+    const cf = c.querySelector("[data-confirm]");
+    if (cf) cf.onclick = async () => { try { await owner("confirm", ep); setLocalDec(ep, { confirmed: true }); toast("ยืนยันแล้ว ✅"); fillKit(c, an); } catch (e) { toast("ไม่สำเร็จ: " + e.message); } };
+  }
+  if (dec.decision === "discard") c.classList.add("done");
 }
 async function copy(t) {
   try { await navigator.clipboard.writeText(t); toast("ก๊อปแล้ว ✅"); }
   catch { prompt("กดค้างเพื่อก๊อป", t); }
 }
 async function clipAction(b) {
-  const c = b.closest(".clip"), act = b.dataset.act;
-  if (act === "ct" || act === "cd") return copy(b.dataset.t);
-  if (act === "up") {
-    const s = doneSet(); s.has(c.dataset.n) ? s.delete(c.dataset.n) : s.add(c.dataset.n);
-    store.set("uploaded", JSON.stringify([...s])); return loadClips();
+  const c = b.closest(".clip"), act = b.dataset.act, ep = c.dataset.ep;
+  if (act === "use" || act === "discard") {
+    try { await owner(act, ep); setLocalDec(ep, { decision: act }); toast(act === "use" ? "บันทึก: ใช้คลิปนี้ ✅" : "บันทึก: ทิ้งคลิปนี้");
+          fillKit(c, (summary && (summary.clips || []).find(x => x.episode === ep)) || null); }
+    catch (e) { toast("ไม่สำเร็จ: " + e.message); }
+    return;
+  }
+  if (act === "remake") {
+    const k = kits[ep]; const topic = (k && k.topic) || "";
+    if (!topic) { toast("ไม่พบหัวข้อของคลิปนี้"); return; }
+    if (!confirm(`ทำคลิปเรื่อง "${topic}" ใหม่อีก 1 คลิป?`)) return;
+    try { await gh("/actions/workflows/make.yml/dispatches", { method: "POST",
+            body: JSON.stringify({ ref: "main", inputs: { niche: "", count: "1", topics: topic } }) });
+          await owner("discard", ep); setLocalDec(ep, { decision: "discard" }); toast("ส่งทำใหม่แล้ว 🔁"); }
+    catch (e) { toast("ไม่สำเร็จ: " + e.message); }
+    return;
+  }
+  if (act === "posted") {
+    const link = prompt("วางลิงก์คลิปบน YouTube (เช่น youtube.com/shorts/xxxx)\nหรือปล่อยว่าง แล้วระบบจะหาให้เองในรอบดึงผลถัดไป", "");
+    if (link === null) return;
+    try {
+      if (link.trim()) { await owner("bind", ep, link.trim()); setLocalDec(ep, { confirmed: true }); toast("ผูกคลิปกับ YouTube แล้ว ✅"); }
+      else { await owner("use", ep); setLocalDec(ep, { decision: "use" }); toast("ระบบจะหาคลิปบนช่องให้ แล้วถามยืนยันในหน้านี้"); }
+      fillKit(c, null);
+    } catch (e) { toast("ไม่สำเร็จ: " + e.message); }
+    return;
   }
   if (act === "cov") {
     try {
@@ -371,22 +456,99 @@ async function clipAction(b) {
     } catch { window.open(b.dataset.cu, "_blank", "noopener"); }
     return;
   }
-  // download: fetch through the API (works for private repos), fall back to GitHub's own download link
+  // watch / download: fetch through the API (works for private repos), fall back to GitHub's own download link
   b.disabled = true; b.textContent = "กำลังโหลดคลิป…";
   try {
     const res = await gh(`/releases/assets/${c.dataset.a}`, { headers: { Accept: "application/octet-stream" } });
     const blob = await res.blob();
     const url = URL.createObjectURL(new Blob([blob], { type: "video/mp4" }));
-    c.querySelector(".v").innerHTML = `<video controls playsinline src="${url}"></video>`;
+    c.querySelector(".v").innerHTML = `<video controls playsinline loop src="${url}"></video>`;
     const a = document.createElement("a"); a.href = url; a.download = c.dataset.n; a.className = "main";
     a.textContent = "บันทึกลงเครื่อง"; b.replaceWith(a);
-    toast("โหลดเสร็จ กด \"บันทึกลงเครื่อง\" หรือกดค้างที่วิดีโอ");
+    c.querySelector("video").play().catch(() => {});
   } catch (e) {
-    b.disabled = false; b.textContent = "ดาวน์โหลด / ดูคลิป";
+    b.disabled = false; b.textContent = "▶ ดูคลิป / ดาวน์โหลด";
     toast("เปิดผ่านหน้า GitHub แทน (ต้องล็อกอิน GitHub ในเบราว์เซอร์นี้)");
     window.open(c.dataset.u, "_blank", "noopener");
   }
 }
+
+// ---------- results
+const n0 = v => v == null ? "–" : Number(v).toLocaleString();
+async function loadResults() {
+  const box = $("res");
+  box.innerHTML = `<div class="card muted">กำลังโหลด…</div>`;
+  const [summ, learned, over, rep] = await Promise.all([readJsonFile("memory/analytics_summary.json"),
+    readJsonFile("memory/learned.json"), readJsonFile("memory/overrides.json"),
+    (async () => { try { return b64utf8((await ghJson("/contents/memory/analyst_report.md")).content); } catch { return ""; } })()]);
+  let h = `<div class="card"><h2>ผลจริงจาก YouTube</h2>`;
+  if (!summ) h += `<div class="muted small">ยังไม่มีข้อมูล ระบบดึงผลทุกเช้า 05:30 หรือกดปุ่มด้านล่าง</div>`;
+  else h += `<div class="muted small">อัปเดต ${esc((summ.updated || "").replace("T", " "))} · สถิติเชิงลึก ${summ.oauth ? '<span class="ok">เปิดแล้ว</span>' : '<span class="warn">ยังไม่เปิด (ดู SETUP_ANALYTICS_TH)</span>'}</div>`;
+  h += `<div class="row"><button class="btn sec" id="rnow" style="flex:1">ดึงผลตอนนี้</button><button class="btn sec" id="anow" style="flex:1">วิเคราะห์ตอนนี้</button></div></div>`;
+  ((summ || {}).clips || []).slice().reverse().forEach(c => {
+    if (!c.video_id) return;
+    const w = c.windows || {}, d2 = w.d2 || {}, d7 = w.d7 || {};
+    h += `<div class="card"><b>${esc(c.title || c.episode)}</b>
+      <div class="muted small">${esc(c.episode)} · ${c.video_confirmed ? "ผูกแล้ว" : "รอยืนยัน"} · ลง ${esc((c.published || "").slice(0, 10))}</div>
+      <div class="stat"><div>วิวตอนนี้<b>${n0((c.public || {}).views)}</b></div><div>2 วันแรก<b>${n0(d2.engagedViews || d2.views)}</b></div>
+      <div>7 วันแรก<b>${n0(d7.engagedViews || d7.views)}</b></div>
+      <div>ดูเฉลี่ย<b>${d7.averageViewPercentage != null ? d7.averageViewPercentage.toFixed(0) + "%" : "–"}</b></div>
+      <div>ไลก์<b>${n0((c.public || {}).likes)}</b></div><div>คนอเมริกา<b>${c.us_share != null ? Math.round(c.us_share * 100) + "%" : "–"}</b></div></div>
+      ${c.worst_scene ? `<div class="small warn" style="margin-top:6px">คนออกเยอะที่สุด: ฉาก ${c.worst_scene.i + 1} (${esc(c.worst_scene.kind)}) "${esc(c.worst_scene.text)}"</div>` : ""}</div>`;
+  });
+  const off = new Set((over || {}).disabled || []);
+  const ch = ((learned || {}).changes || []).filter(x => x.status === "active").slice(-10).reverse();
+  h += `<div class="card"><h2>สิ่งที่ทีมวิเคราะห์ปรับ</h2>`;
+  h += ch.length ? ch.map(x => `<div class="run"><b>${esc(x.id)}</b> · ${esc(x.kind)} ${esc(x.key || "")} = ${esc(x.value)}
+      <div class="muted small">${esc(x.why)} · ${esc(x.date)}</div>
+      <button class="btn sec" data-ch="${esc(x.id)}" data-on="${off.has(x.id) ? 0 : 1}">${off.has(x.id) ? "เปิดใช้อีกครั้ง" : "ยกเลิกการปรับนี้"}</button></div>`).join("")
+    : `<div class="muted small">ยังไม่มีการปรับ (ต้องมีคลิปที่มีข้อมูล 7 วันอย่างน้อย 10 คลิป)</div>`;
+  h += `</div>`;
+  if (rep) h += `<div class="card"><h2>รายงานล่าสุด</h2><div class="small">${esc(rep).replace(/^# (.*)$/gm, "<b>$1</b>").replace(/^## (.*)$/gm, "<b>$1</b>").replace(/\n/g, "<br>")}</div></div>`;
+  box.innerHTML = h;
+  $("rnow").onclick = () => dispatchAnalytics(false);
+  $("anow").onclick = () => dispatchAnalytics(true);
+  box.querySelectorAll("[data-ch]").forEach(b => b.onclick = async () => {
+    try { await owner(b.dataset.on === "1" ? "undo_change" : "redo_change", b.dataset.ch); toast("บันทึกแล้ว (มีผลกับคลิปถัดไป)"); b.disabled = true; }
+    catch (e) { toast("ไม่สำเร็จ: " + e.message); }
+  });
+}
+async function dispatchAnalytics(an) {
+  try { await gh("/actions/workflows/analytics.yml/dispatches", { method: "POST",
+          body: JSON.stringify({ ref: "main", inputs: { analyst: an } }) }); toast("เริ่มแล้ว ประมาณ 1–2 นาที แล้วเปิดแท็บนี้ใหม่"); }
+  catch (e) { toast("ไม่สำเร็จ: " + e.message); }
+}
+
+// ---------- voices
+async function loadVoices() {
+  if (!ready()) return;
+  const cfgj = await readJsonFile("config/channel.json");
+  if (cfgj) { const v = cfgj.voice || {}; $("curvoice").textContent = "เสียงที่ใช้อยู่: " + (v.engine === "kokoro" ? "Kokoro " + v.kokoro_voice : "Edge " + (v.edge_voice || "").replace("en-US-", "")); }
+  let rel = null; try { rel = await ghJson("/releases/tags/voice-test"); } catch {}
+  if (!rel) { $("voices").innerHTML = `<span class="muted">ยังไม่มีเสียงตัวอย่าง กดปุ่มด้านบน</span>`; return; }
+  $("voices").innerHTML = rel.assets.filter(a => a.name.endsWith(".mp3")).map(a => {
+    const m = a.name.match(/^voice_(edge|kokoro)_(.+)\.mp3$/) || [];
+    return `<div class="run"><b>${esc(m[1] === "kokoro" ? "Kokoro · " + m[2] : "Edge · " + m[2])}</b>
+      <button class="btn sec" data-play="${a.id}">▶ ฟัง</button><div class="pl"></div>
+      <button class="btn" data-use="${esc(m[1])}:${esc(m[1] === "edge" ? "en-US-" + m[2] + (["Andrew", "Brian"].includes(m[2]) ? "MultilingualNeural" : "Neural") : m[2])}">ใช้เสียงนี้</button></div>`;
+  }).join("");
+  $("voices").querySelectorAll("[data-play]").forEach(b => b.onclick = async () => {
+    b.disabled = true;
+    try { const res = await gh(`/releases/assets/${b.dataset.play}`, { headers: { Accept: "application/octet-stream" } });
+          const url = URL.createObjectURL(new Blob([await res.blob()], { type: "audio/mpeg" }));
+          b.nextElementSibling.innerHTML = `<audio controls autoplay src="${url}"></audio>`; }
+    catch (e) { toast("โหลดเสียงไม่ได้"); }
+    b.disabled = false;
+  });
+  $("voices").querySelectorAll("[data-use]").forEach(b => b.onclick = async () => {
+    try { await owner("voice", "", b.dataset.use); toast("เปลี่ยนเสียงแล้ว มีผลกับคลิปถัดไป ✅"); } catch (e) { toast("ไม่สำเร็จ: " + e.message); }
+  });
+}
+$("vtest").onclick = async () => {
+  try { await gh("/actions/workflows/voices.yml/dispatches", { method: "POST", body: JSON.stringify({ ref: "main" }) });
+        toast("กำลังทำเสียงตัวอย่าง ประมาณ 5 นาที แล้วเปิดหน้านี้ใหม่"); }
+  catch (e) { toast("ไม่สำเร็จ: " + e.message); }
+};
 
 // ---------- settings
 $("owner").value = cfg.owner; $("repo").value = cfg.repo; $("token").value = cfg.token;
