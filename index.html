@@ -387,7 +387,9 @@ async function loadClips() {
 const kits = {};
 async function fillKit(c, an) {
   const ep = c.dataset.ep; let k = null;
-  if (c.dataset.k) { try { k = kits[ep] || await assetJson(c.dataset.k); kits[ep] = k; } catch {} }
+  k = kits[ep] || await readJsonFile("memory/kits/" + ep + ".json");
+  if (!k && c.dataset.k) { try { k = await assetJson(c.dataset.k); } catch {} }
+  if (k) kits[ep] = k;
   const dec = { ...(an || {}), ...(localDec()[ep] || {}) };
   if (k) {
     c.querySelector(".ttl").textContent = (k.titles || [])[0] || ep;
@@ -447,30 +449,30 @@ async function clipAction(b) {
     return;
   }
   if (act === "cov") {
-    try {
-      const res = await gh(`/releases/assets/${b.dataset.c}`, { headers: { Accept: "application/octet-stream" } });
-      const url = URL.createObjectURL(new Blob([await res.blob()], { type: "image/jpeg" }));
-      const a = document.createElement("a"); a.href = url; a.download = b.dataset.cn; a.textContent = "บันทึกภาพปก";
-      c.querySelector(".v").insertAdjacentHTML("beforeend", `<img src="${url}" style="width:100%;border-radius:10px;margin-top:8px">`);
-      b.replaceWith(a);
-    } catch { window.open(b.dataset.cu, "_blank", "noopener"); }
+    c.querySelector(".v").insertAdjacentHTML("beforeend", `<img src="${esc(b.dataset.cu)}" style="width:100%;border-radius:10px;margin-top:8px" alt="">`);
+    const a = document.createElement("a"); a.href = b.dataset.cu; a.target = "_blank"; a.rel = "noopener"; a.textContent = "เปิดภาพปกเพื่อบันทึก";
+    b.replaceWith(a);
     return;
   }
-  // watch / download: fetch through the API (works for private repos), fall back to GitHub's own download link
-  b.disabled = true; b.textContent = "กำลังโหลดคลิป…";
-  try {
-    const res = await gh(`/releases/assets/${c.dataset.a}`, { headers: { Accept: "application/octet-stream" } });
-    const blob = await res.blob();
-    const url = URL.createObjectURL(new Blob([blob], { type: "video/mp4" }));
-    c.querySelector(".v").innerHTML = `<video controls playsinline loop src="${url}"></video>`;
-    const a = document.createElement("a"); a.href = url; a.download = c.dataset.n; a.className = "main";
-    a.textContent = "บันทึกลงเครื่อง"; b.replaceWith(a);
-    c.querySelector("video").play().catch(() => {});
-  } catch (e) {
-    b.disabled = false; b.textContent = "▶ ดูคลิป / ดาวน์โหลด";
-    toast("เปิดผ่านหน้า GitHub แทน (ต้องล็อกอิน GitHub ในเบราว์เซอร์นี้)");
-    window.open(c.dataset.u, "_blank", "noopener");
-  }
+  // watch first: stream straight from the release (public repo); private repo -> fetch through the API
+  const box = c.querySelector(".v");
+  box.innerHTML = `<video controls playsinline loop preload="auto" src="${esc(c.dataset.u)}"></video>
+    <div class="muted small" style="margin-top:6px">ชอบแล้วกด "บันทึกลงมือถือ" → หน้าคลิปเปิดขึ้น → กดปุ่มแชร์ → <b>บันทึกวิดีโอ</b></div>`;
+  const v = box.querySelector("video");
+  const save = document.createElement("a"); save.href = c.dataset.u; save.target = "_blank"; save.rel = "noopener";
+  save.className = "main"; save.textContent = "⬇ บันทึกลงมือถือ";
+  b.replaceWith(save);
+  v.play().catch(() => {});
+  v.addEventListener("error", async () => {
+    box.insertAdjacentHTML("beforeend", `<div class="muted small">กำลังโหลดผ่าน GitHub API…</div>`);
+    try {
+      const res = await gh(`/releases/assets/${c.dataset.a}`, { headers: { Accept: "application/octet-stream" } });
+      const url = URL.createObjectURL(new Blob([await res.blob()], { type: "video/mp4" }));
+      v.src = url; save.href = url; save.download = c.dataset.n; v.play().catch(() => {});
+    } catch (e) {
+      toast("เปิดคลิปไม่ได้ในเบราว์เซอร์นี้ — ดูใน Telegram หรือเปิด repo เป็นสาธารณะ");
+    }
+  }, { once: true });
 }
 
 // ---------- results
